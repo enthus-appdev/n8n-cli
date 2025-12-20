@@ -141,4 +141,4 @@ Config is stored in `~/.config/n8n-cli/config.json`
 
 ## License
 
-MIT
+MIT + Commons Clause - Free to use, modify, and distribute. Cannot be sold as a product or service. See [LICENSE](LICENSE) for details.
