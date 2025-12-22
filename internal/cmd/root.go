@@ -18,7 +18,7 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "n8n",
+	Use:   "n8nctl",
 	Short: "CLI for interacting with n8n workflow automation",
 	Long: `n8n-cli is a command-line tool for managing n8n workflows.
 

@@ -21,8 +21,8 @@ NC='\033[0m' # No Color
 
 # Configuration
 REPO="enthus-appdev/n8n-cli"
-BINARY_NAME="n8n"
-GO_MODULE="github.com/${REPO}/cmd/n8n"
+BINARY_NAME="n8nctl"
+GO_MODULE="github.com/${REPO}/cmd/n8nctl"
 
 echo -e "${BLUE}${BOLD}n8n CLI Installer${NC}"
 echo
@@ -55,7 +55,7 @@ else
     cd n8n-cli
 
     echo -e "${BLUE}Building...${NC}"
-    go build -o "${BINARY_NAME}" ./cmd/n8n
+    go build -o "${BINARY_NAME}" ./cmd/n8nctl
 
     # Try to install to common locations
     INSTALLED=false
@@ -92,9 +92,9 @@ if command -v "${BINARY_NAME}" &> /dev/null; then
     echo -e "${GREEN}${BOLD}✓ n8n-cli is ready!${NC}"
     echo
     echo "Get started:"
-    echo -e "  ${BLUE}n8n config init${NC}              # Configure your n8n instance"
-    echo -e "  ${BLUE}n8n workflow list${NC}            # List workflows"
-    echo -e "  ${BLUE}n8n workflow pull <id> -r${NC}    # Pull workflow with sub-workflows"
+    echo -e "  ${BLUE}n8nctl config init${NC}           # Configure your n8n instance"
+    echo -e "  ${BLUE}n8nctl workflow list${NC}         # List workflows"
+    echo -e "  ${BLUE}n8nctl workflow pull <id> -r${NC} # Pull workflow with sub-workflows"
 else
     echo -e "${YELLOW}Warning: ${BINARY_NAME} command not found in PATH${NC}"
     echo "You may need to add ~/go/bin to your PATH:"

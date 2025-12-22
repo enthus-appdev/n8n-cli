@@ -15,7 +15,7 @@ A command-line interface for managing [n8n](https://n8n.io) workflows. Perfect f
 
 ```bash
 # From source
-go install github.com/enthus-appdev/n8n-cli/cmd/n8n@latest
+go install github.com/enthus-appdev/n8n-cli/cmd/n8nctl@latest
 
 # Or build locally
 git clone https://github.com/enthus-appdev/n8n-cli.git
@@ -27,18 +27,18 @@ make build
 
 ```bash
 # Configure your n8n instance
-n8n config init
+n8nctl config init
 
 # List all workflows
-n8n workflow list
+n8nctl workflow list
 
 # Pull a workflow (with sub-workflows)
-n8n workflow pull <id> --recursive --dir ./my-workflows
+n8nctl workflow pull <id> --recursive --dir ./my-workflows
 
 # Edit the JSON files...
 
 # Push changes back
-n8n workflow push ./my-workflows
+n8nctl workflow push ./my-workflows
 ```
 
 ## Commands
@@ -46,35 +46,35 @@ n8n workflow push ./my-workflows
 ### Configuration
 
 ```bash
-n8n config init              # Configure a new n8n instance (interactive)
-n8n config init --name prod --url https://n8n.example.com --api-key KEY
-n8n config list              # List configured instances
-n8n config use <name>        # Switch active instance
-n8n config remove <name>     # Remove an instance
+n8nctl config init              # Configure a new n8n instance (interactive)
+n8nctl config init --name prod --url https://n8n.example.com --api-key KEY
+n8nctl config list              # List configured instances
+n8nctl config use <name>        # Switch active instance
+n8nctl config remove <name>     # Remove an instance
 ```
 
 ### Workflows
 
 ```bash
-n8n workflow list [--active] [--json]     # List workflows
-n8n workflow view <id>                     # View workflow JSON
-n8n workflow pull <id>                     # Download to file
-n8n workflow pull <id> -r -d ./dir         # Recursive pull with sub-workflows
-n8n workflow push <file>                   # Update workflow from file
-n8n workflow push <dir>                    # Push from manifest
-n8n workflow push <file> --create          # Create new workflow
-n8n workflow run <id> [-i '{"key":"val"}'] # Execute workflow
-n8n workflow activate <id>                 # Activate workflow
-n8n workflow deactivate <id>               # Deactivate workflow
+n8nctl workflow list [--active] [--json]     # List workflows
+n8nctl workflow view <id>                     # View workflow JSON
+n8nctl workflow pull <id>                     # Download to file
+n8nctl workflow pull <id> -r -d ./dir         # Recursive pull with sub-workflows
+n8nctl workflow push <file>                   # Update workflow from file
+n8nctl workflow push <dir>                    # Push from manifest
+n8nctl workflow push <file> --create          # Create new workflow
+n8nctl workflow run <id> [-i '{"key":"val"}'] # Execute workflow
+n8nctl workflow activate <id>                 # Activate workflow
+n8nctl workflow deactivate <id>               # Deactivate workflow
 ```
 
 ### Executions
 
 ```bash
-n8n execution list [--workflow <id>]  # List executions
-n8n execution view <id>               # View execution details
-n8n execution retry <id>              # Retry a failed execution
-n8n execution delete <id>             # Delete execution
+n8nctl execution list [--workflow <id>]  # List executions
+n8nctl execution view <id>               # View execution details
+n8nctl execution retry <id>              # Retry a failed execution
+n8nctl execution delete <id>             # Delete execution
 ```
 
 ## Recursive Pull & Push
@@ -82,7 +82,7 @@ n8n execution delete <id>             # Delete execution
 The killer feature: pull a workflow and all its sub-workflows at once.
 
 ```bash
-n8n workflow pull abc123 --recursive --dir ./workflows
+n8nctl workflow pull abc123 --recursive --dir ./workflows
 ```
 
 Creates:
@@ -110,7 +110,7 @@ The `manifest.json` tracks workflow relationships:
 
 Push back in the correct order:
 ```bash
-n8n workflow push ./workflows
+n8nctl workflow push ./workflows
 ```
 
 ## For LLMs
@@ -118,15 +118,15 @@ n8n workflow push ./workflows
 Use `--json` flag for structured output:
 
 ```bash
-n8n workflow list --json
-n8n workflow view abc123 --json
-n8n execution list --json
+n8nctl workflow list --json
+n8nctl workflow view abc123 --json
+n8nctl execution list --json
 ```
 
 Typical workflow for LLM-assisted development:
-1. `n8n workflow pull <id> -r -d ./wf` - Pull workflow tree
+1. `n8nctl workflow pull <id> -r -d ./wf` - Pull workflow tree
 2. LLM reads and modifies JSON files
-3. `n8n workflow push ./wf` - Push changes back
+3. `n8nctl workflow push ./wf` - Push changes back
 
 ## Configuration
 
