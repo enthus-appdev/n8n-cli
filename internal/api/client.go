@@ -386,8 +386,12 @@ func (c *Client) ListExecutions(opts ListExecutionsOptions) (*ListResult[Executi
 }
 
 // GetExecution returns an execution by ID
-func (c *Client) GetExecution(id string) (*Execution, error) {
-	respBody, err := c.request(http.MethodGet, "/executions/"+id, nil)
+func (c *Client) GetExecution(id string, includeData bool) (*Execution, error) {
+	path := "/executions/" + id
+	if includeData {
+		path += "?includeData=true"
+	}
+	respBody, err := c.request(http.MethodGet, path, nil)
 	if err != nil {
 		return nil, err
 	}
