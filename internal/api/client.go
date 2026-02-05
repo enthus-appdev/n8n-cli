@@ -215,7 +215,7 @@ func (c *Client) ListWorkflows(opts ListWorkflowsOptions) (*ListResult[Workflow]
 
 // GetWorkflow returns a workflow by ID
 func (c *Client) GetWorkflow(id string) (*Workflow, error) {
-	respBody, err := c.request(http.MethodGet, "/workflows/"+id, nil)
+	respBody, err := c.request(http.MethodGet, "/workflows/"+url.PathEscape(id), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -272,7 +272,7 @@ func (c *Client) UpdateWorkflow(id string, wf *Workflow) (*Workflow, error) {
 		StaticData:  wf.StaticData,
 	}
 
-	respBody, err := c.request(http.MethodPut, "/workflows/"+id, body)
+	respBody, err := c.request(http.MethodPut, "/workflows/"+url.PathEscape(id), body)
 	if err != nil {
 		return nil, err
 	}
@@ -287,25 +287,25 @@ func (c *Client) UpdateWorkflow(id string, wf *Workflow) (*Workflow, error) {
 
 // DeleteWorkflow deletes a workflow
 func (c *Client) DeleteWorkflow(id string) error {
-	_, err := c.request(http.MethodDelete, "/workflows/"+id, nil)
+	_, err := c.request(http.MethodDelete, "/workflows/"+url.PathEscape(id), nil)
 	return err
 }
 
 // ActivateWorkflow activates a workflow
 func (c *Client) ActivateWorkflow(id string) error {
-	_, err := c.request(http.MethodPost, "/workflows/"+id+"/activate", nil)
+	_, err := c.request(http.MethodPost, "/workflows/"+url.PathEscape(id)+"/activate", nil)
 	return err
 }
 
 // DeactivateWorkflow deactivates a workflow
 func (c *Client) DeactivateWorkflow(id string) error {
-	_, err := c.request(http.MethodPost, "/workflows/"+id+"/deactivate", nil)
+	_, err := c.request(http.MethodPost, "/workflows/"+url.PathEscape(id)+"/deactivate", nil)
 	return err
 }
 
 // GetWorkflowTags returns tags for a workflow
 func (c *Client) GetWorkflowTags(id string) ([]Tag, error) {
-	respBody, err := c.request(http.MethodGet, "/workflows/"+id+"/tags", nil)
+	respBody, err := c.request(http.MethodGet, "/workflows/"+url.PathEscape(id)+"/tags", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -324,7 +324,7 @@ func (c *Client) UpdateWorkflowTags(id string, tagIDs []string) ([]Tag, error) {
 		"tagIds": tagIDs,
 	}
 
-	respBody, err := c.request(http.MethodPut, "/workflows/"+id+"/tags", body)
+	respBody, err := c.request(http.MethodPut, "/workflows/"+url.PathEscape(id)+"/tags", body)
 	if err != nil {
 		return nil, err
 	}
@@ -342,7 +342,7 @@ func (c *Client) TransferWorkflow(id, destinationProjectID string) error {
 	body := map[string]string{
 		"destinationProjectId": destinationProjectID,
 	}
-	_, err := c.request(http.MethodPut, "/workflows/"+id+"/transfer", body)
+	_, err := c.request(http.MethodPut, "/workflows/"+url.PathEscape(id)+"/transfer", body)
 	return err
 }
 
@@ -381,7 +381,7 @@ func (c *Client) ExecuteWorkflow(id string, data map[string]interface{}, wait bo
 		body["data"] = data
 	}
 
-	path := "/workflows/" + id + "/execute"
+	path := "/workflows/" + url.PathEscape(id) + "/execute"
 	if wait {
 		path += "?wait=true"
 	}
@@ -441,7 +441,7 @@ func (c *Client) ListExecutions(opts ListExecutionsOptions) (*ListResult[Executi
 
 // GetExecution returns an execution by ID
 func (c *Client) GetExecution(id string, includeData bool) (*Execution, error) {
-	path := "/executions/" + id
+	path := "/executions/" + url.PathEscape(id)
 	if includeData {
 		path += "?includeData=true"
 	}
@@ -465,7 +465,7 @@ func (c *Client) RetryExecution(id string, loadWorkflow bool) (*Execution, error
 		body = map[string]bool{"loadWorkflow": true}
 	}
 
-	respBody, err := c.request(http.MethodPost, "/executions/"+id+"/retry", body)
+	respBody, err := c.request(http.MethodPost, "/executions/"+url.PathEscape(id)+"/retry", body)
 	if err != nil {
 		return nil, err
 	}
@@ -480,7 +480,7 @@ func (c *Client) RetryExecution(id string, loadWorkflow bool) (*Execution, error
 
 // DeleteExecution deletes an execution
 func (c *Client) DeleteExecution(id string) error {
-	_, err := c.request(http.MethodDelete, "/executions/"+id, nil)
+	_, err := c.request(http.MethodDelete, "/executions/"+url.PathEscape(id), nil)
 	return err
 }
 
@@ -518,7 +518,7 @@ func (c *Client) ListTags(limit int, cursor string) ([]Tag, error) {
 
 // GetTag returns a tag by ID
 func (c *Client) GetTag(id string) (*Tag, error) {
-	respBody, err := c.request(http.MethodGet, "/tags/"+id, nil)
+	respBody, err := c.request(http.MethodGet, "/tags/"+url.PathEscape(id), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -550,7 +550,7 @@ func (c *Client) CreateTag(name string) (*Tag, error) {
 // UpdateTag updates a tag
 func (c *Client) UpdateTag(id, name string) (*Tag, error) {
 	body := map[string]string{"name": name}
-	respBody, err := c.request(http.MethodPut, "/tags/"+id, body)
+	respBody, err := c.request(http.MethodPut, "/tags/"+url.PathEscape(id), body)
 	if err != nil {
 		return nil, err
 	}
@@ -565,7 +565,7 @@ func (c *Client) UpdateTag(id, name string) (*Tag, error) {
 
 // DeleteTag deletes a tag
 func (c *Client) DeleteTag(id string) error {
-	_, err := c.request(http.MethodDelete, "/tags/"+id, nil)
+	_, err := c.request(http.MethodDelete, "/tags/"+url.PathEscape(id), nil)
 	return err
 }
 
@@ -588,13 +588,13 @@ func (c *Client) CreateCredential(cred *Credential) (*Credential, error) {
 
 // DeleteCredential deletes a credential
 func (c *Client) DeleteCredential(id string) error {
-	_, err := c.request(http.MethodDelete, "/credentials/"+id, nil)
+	_, err := c.request(http.MethodDelete, "/credentials/"+url.PathEscape(id), nil)
 	return err
 }
 
 // GetCredentialSchema returns the schema for a credential type
 func (c *Client) GetCredentialSchema(typeName string) (map[string]interface{}, error) {
-	respBody, err := c.request(http.MethodGet, "/credentials/schema/"+typeName, nil)
+	respBody, err := c.request(http.MethodGet, "/credentials/schema/"+url.PathEscape(typeName), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -612,7 +612,7 @@ func (c *Client) TransferCredential(id, destinationProjectID string) error {
 	body := map[string]string{
 		"destinationProjectId": destinationProjectID,
 	}
-	_, err := c.request(http.MethodPut, "/credentials/"+id+"/transfer", body)
+	_, err := c.request(http.MethodPut, "/credentials/"+url.PathEscape(id)+"/transfer", body)
 	return err
 }
 
@@ -658,12 +658,12 @@ func (c *Client) CreateVariable(key, value string) error {
 // UpdateVariable updates a variable
 func (c *Client) UpdateVariable(id, key, value string) error {
 	body := map[string]string{"key": key, "value": value}
-	_, err := c.request(http.MethodPut, "/variables/"+id, body)
+	_, err := c.request(http.MethodPut, "/variables/"+url.PathEscape(id), body)
 	return err
 }
 
 // DeleteVariable deletes a variable
 func (c *Client) DeleteVariable(id string) error {
-	_, err := c.request(http.MethodDelete, "/variables/"+id, nil)
+	_, err := c.request(http.MethodDelete, "/variables/"+url.PathEscape(id), nil)
 	return err
 }
