@@ -18,13 +18,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - name: Cache license check
+        id: license-cache
+        uses: actions/cache@v5
         with:
-          go-version-file: 'go.mod'
+          path: .license-check-passed
+          key: license-${{ hashFiles('go.sum') }}
 
-      - name: Install go-licenses
-        run: go install github.com/google/go-licenses@latest
+      - name: Run license check
+        if: steps.license-cache.outputs.cache-hit != 'true'
+        uses: enthus-appdev/actions/go-license-validator@main
+        with:
+          forbidden_licenses: ${{ vars.FORBIDDEN_LICENSES }}
 
-      - name: Check licenses
-        run: go-licenses check ./...
+      - name: Mark license check as passed
+        if: steps.license-cache.outputs.cache-hit != 'true'
+        run: echo "passed" > .license-check-passed
