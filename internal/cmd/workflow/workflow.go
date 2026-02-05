@@ -29,6 +29,7 @@ func NewWorkflowCmd() *cobra.Command {
 	cmd.AddCommand(newRunCmd())
 	cmd.AddCommand(newActivateCmd())
 	cmd.AddCommand(newDeactivateCmd())
+	cmd.AddCommand(newTransferCmd())
 
 	return cmd
 }
@@ -49,11 +50,13 @@ func getClient() (*api.Client, error) {
 
 func newListCmd() *cobra.Command {
 	var (
-		active   bool
-		inactive bool
-		tags     []string
-		limit    int
-		cursor   string
+		active    bool
+		inactive  bool
+		tags      []string
+		limit     int
+		cursor    string
+		projectID string
+		name      string
 	)
 
 	cmd := &cobra.Command{
@@ -66,9 +69,11 @@ func newListCmd() *cobra.Command {
 			}
 
 			opts := api.ListWorkflowsOptions{
-				Limit:  limit,
-				Tags:   tags,
-				Cursor: cursor,
+				Limit:     limit,
+				Tags:      tags,
+				Cursor:    cursor,
+				ProjectID: projectID,
+				Name:      name,
 			}
 
 			if active && !inactive {
@@ -116,6 +121,8 @@ func newListCmd() *cobra.Command {
 	cmd.Flags().StringSliceVar(&tags, "tag", nil, "Filter by tag (can be repeated)")
 	cmd.Flags().IntVar(&limit, "limit", 100, "Maximum number of workflows to return")
 	cmd.Flags().StringVar(&cursor, "cursor", "", "Pagination cursor for next page")
+	cmd.Flags().StringVar(&projectID, "project", "", "Filter by project ID")
+	cmd.Flags().StringVar(&name, "name", "", "Filter by workflow name")
 
 	return cmd
 }
@@ -123,7 +130,7 @@ func newListCmd() *cobra.Command {
 func newViewCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "view <workflow-id>",
-		Short: "View a workflow's JSON definition",
+		Short: "View a workflow",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, err := getClient()
@@ -136,7 +143,46 @@ func newViewCmd() *cobra.Command {
 				return fmt.Errorf("failed to get workflow: %w", err)
 			}
 
-			return printJSON(wf)
+			jsonFlag, _ := cmd.Flags().GetBool("json")
+			if jsonFlag {
+				return printJSON(wf)
+			}
+
+			// Human-readable summary
+			fmt.Printf("Workflow: %s (%s)\n", wf.Name, wf.ID)
+			activeStr := "no"
+			if wf.Active {
+				activeStr = "yes"
+			}
+			fmt.Printf("Active: %s\n", activeStr)
+
+			// Show project info from shared field
+			if len(wf.Shared) > 0 {
+				s := wf.Shared[0]
+				if s.Project != nil {
+					fmt.Printf("Project: %s (%s)\n", s.Project.Name, s.ProjectID)
+				} else if s.ProjectID != "" {
+					fmt.Printf("Project: %s\n", s.ProjectID)
+				}
+			}
+
+			// Tags
+			if len(wf.Tags) > 0 {
+				tagNames := make([]string, len(wf.Tags))
+				for i, t := range wf.Tags {
+					tagNames[i] = t.Name
+				}
+				fmt.Printf("Tags: %s\n", strings.Join(tagNames, ", "))
+			}
+
+			if wf.CreatedAt != nil {
+				fmt.Printf("Created: %s\n", wf.CreatedAt.Local().Format("2006-01-02 15:04:05"))
+			}
+			if wf.UpdatedAt != nil {
+				fmt.Printf("Updated: %s\n", wf.UpdatedAt.Local().Format("2006-01-02 15:04:05"))
+			}
+
+			return nil
 		},
 	}
 }
@@ -444,6 +490,27 @@ func newDeactivateCmd() *cobra.Command {
 			}
 
 			fmt.Println("Workflow deactivated.")
+			return nil
+		},
+	}
+}
+
+func newTransferCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "transfer <workflow-id> <project-id>",
+		Short: "Transfer a workflow to another project",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client, err := getClient()
+			if err != nil {
+				return err
+			}
+
+			if err := client.TransferWorkflow(args[0], args[1]); err != nil {
+				return fmt.Errorf("failed to transfer workflow: %w", err)
+			}
+
+			fmt.Printf("Workflow %s transferred to project %s.\n", args[0], args[1])
 			return nil
 		},
 	}

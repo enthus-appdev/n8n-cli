@@ -9,6 +9,7 @@ import (
 
 	configcmd "github.com/enthus-appdev/n8n-cli/internal/cmd/config"
 	executioncmd "github.com/enthus-appdev/n8n-cli/internal/cmd/execution"
+	projectcmd "github.com/enthus-appdev/n8n-cli/internal/cmd/project"
 	workflowcmd "github.com/enthus-appdev/n8n-cli/internal/cmd/workflow"
 )
 
@@ -38,6 +39,7 @@ func init() {
 	rootCmd.AddCommand(configcmd.NewConfigCmd())
 	rootCmd.AddCommand(workflowcmd.NewWorkflowCmd())
 	rootCmd.AddCommand(executioncmd.NewExecutionCmd())
+	rootCmd.AddCommand(projectcmd.NewProjectCmd())
 	rootCmd.AddCommand(newVersionCmd())
 }
 
