@@ -29,6 +29,7 @@ func NewWorkflowCmd() *cobra.Command {
 	cmd.AddCommand(newRunCmd())
 	cmd.AddCommand(newActivateCmd())
 	cmd.AddCommand(newDeactivateCmd())
+	cmd.AddCommand(newTransferCmd())
 
 	return cmd
 }
@@ -49,11 +50,13 @@ func getClient() (*api.Client, error) {
 
 func newListCmd() *cobra.Command {
 	var (
-		active   bool
-		inactive bool
-		tags     []string
-		limit    int
-		cursor   string
+		active    bool
+		inactive  bool
+		tags      []string
+		limit     int
+		cursor    string
+		projectID string
+		name      string
 	)
 
 	cmd := &cobra.Command{
@@ -66,9 +69,11 @@ func newListCmd() *cobra.Command {
 			}
 
 			opts := api.ListWorkflowsOptions{
-				Limit:  limit,
-				Tags:   tags,
-				Cursor: cursor,
+				Limit:     limit,
+				Tags:      tags,
+				Cursor:    cursor,
+				ProjectID: projectID,
+				Name:      name,
 			}
 
 			if active && !inactive {
@@ -116,6 +121,8 @@ func newListCmd() *cobra.Command {
 	cmd.Flags().StringSliceVar(&tags, "tag", nil, "Filter by tag (can be repeated)")
 	cmd.Flags().IntVar(&limit, "limit", 100, "Maximum number of workflows to return")
 	cmd.Flags().StringVar(&cursor, "cursor", "", "Pagination cursor for next page")
+	cmd.Flags().StringVar(&projectID, "project", "", "Filter by project ID")
+	cmd.Flags().StringVar(&name, "name", "", "Filter by workflow name")
 
 	return cmd
 }
@@ -123,7 +130,7 @@ func newListCmd() *cobra.Command {
 func newViewCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "view <workflow-id>",
-		Short: "View a workflow's JSON definition",
+		Short: "View a workflow",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, err := getClient()
@@ -136,7 +143,47 @@ func newViewCmd() *cobra.Command {
 				return fmt.Errorf("failed to get workflow: %w", err)
 			}
 
-			return printJSON(wf)
+			jsonFlag, _ := cmd.Flags().GetBool("json")
+			if jsonFlag {
+				return printJSON(wf)
+			}
+
+			// Human-readable summary
+			fmt.Printf("Workflow: %s (%s)\n", wf.Name, wf.ID)
+			activeStr := "no"
+			if wf.Active {
+				activeStr = "yes"
+			}
+			fmt.Printf("Active: %s\n", activeStr)
+
+			// Show project info from shared field.
+			// n8n's API always returns exactly one owner entry per workflow.
+			if len(wf.Shared) > 0 {
+				s := wf.Shared[0]
+				if s.Project != nil {
+					fmt.Printf("Project: %s (%s)\n", s.Project.Name, s.ProjectID)
+				} else if s.ProjectID != "" {
+					fmt.Printf("Project: %s\n", s.ProjectID)
+				}
+			}
+
+			// Tags
+			if len(wf.Tags) > 0 {
+				tagNames := make([]string, len(wf.Tags))
+				for i, t := range wf.Tags {
+					tagNames[i] = t.Name
+				}
+				fmt.Printf("Tags: %s\n", strings.Join(tagNames, ", "))
+			}
+
+			if wf.CreatedAt != nil {
+				fmt.Printf("Created: %s\n", wf.CreatedAt.Local().Format("2006-01-02 15:04:05"))
+			}
+			if wf.UpdatedAt != nil {
+				fmt.Printf("Updated: %s\n", wf.UpdatedAt.Local().Format("2006-01-02 15:04:05"))
+			}
+
+			return nil
 		},
 	}
 }
@@ -447,6 +494,80 @@ func newDeactivateCmd() *cobra.Command {
 			return nil
 		},
 	}
+}
+
+func newTransferCmd() *cobra.Command {
+	var skipCredentials bool
+
+	cmd := &cobra.Command{
+		Use:   "transfer <workflow-id> <project-id>",
+		Short: "Transfer a workflow and its credentials to another project",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client, err := getClient()
+			if err != nil {
+				return err
+			}
+
+			workflowID := args[0]
+			projectID := args[1]
+
+			// Transfer credentials first so the workflow doesn't lose access
+			if !skipCredentials {
+				wf, err := client.GetWorkflow(workflowID)
+				if err != nil {
+					return fmt.Errorf("failed to get workflow: %w", err)
+				}
+
+				credIDs := extractCredentialIDs(wf)
+				for _, credID := range credIDs {
+					if err := client.TransferCredential(credID, projectID); err != nil {
+						fmt.Fprintf(os.Stderr, "Warning: failed to transfer credential %s: %v\n", credID, err)
+					} else {
+						fmt.Printf("Transferred credential %s\n", credID)
+					}
+				}
+			}
+
+			if err := client.TransferWorkflow(workflowID, projectID); err != nil {
+				return fmt.Errorf("failed to transfer workflow: %w", err)
+			}
+
+			fmt.Printf("Workflow %s transferred to project %s.\n", workflowID, projectID)
+			return nil
+		},
+	}
+
+	cmd.Flags().BoolVar(&skipCredentials, "skip-credentials", false, "Don't transfer credentials used by the workflow")
+
+	return cmd
+}
+
+// extractCredentialIDs returns unique credential IDs used by a workflow's nodes.
+func extractCredentialIDs(wf *api.Workflow) []string {
+	seen := make(map[string]bool)
+	var ids []string
+
+	for _, node := range wf.Nodes {
+		creds, ok := node["credentials"].(map[string]interface{})
+		if !ok {
+			continue
+		}
+		for _, cred := range creds {
+			credMap, ok := cred.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			id, ok := credMap["id"].(string)
+			if !ok || id == "" || seen[id] {
+				continue
+			}
+			seen[id] = true
+			ids = append(ids, id)
+		}
+	}
+
+	return ids
 }
 
 func boolPtr(b bool) *bool {

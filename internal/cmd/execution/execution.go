@@ -181,7 +181,9 @@ func newListCmd() *cobra.Command {
 }
 
 func newViewCmd() *cobra.Command {
-	return &cobra.Command{
+	var showData bool
+
+	cmd := &cobra.Command{
 		Use:   "view <execution-id>",
 		Short: "View execution details",
 		Args:  cobra.ExactArgs(1),
@@ -191,7 +193,10 @@ func newViewCmd() *cobra.Command {
 				return err
 			}
 
-			exec, err := client.GetExecution(args[0])
+			jsonFlag, _ := cmd.Flags().GetBool("json")
+			// Auto-include data in JSON mode
+			includeData := showData || jsonFlag
+			exec, err := client.GetExecution(args[0], includeData)
 			if err != nil {
 				return fmt.Errorf("failed to get execution: %w", err)
 			}
@@ -202,7 +207,6 @@ func newViewCmd() *cobra.Command {
 				workflowName = wf.Name
 			}
 
-			jsonFlag, _ := cmd.Flags().GetBool("json")
 			if jsonFlag {
 				// Enrich JSON with workflow name
 				enriched := struct {
@@ -240,9 +244,156 @@ func newViewCmd() *cobra.Command {
 				fmt.Printf("\nError: %s\n", exec.Error)
 			}
 
+			// Extract error details from execution data
+			if exec.Data != nil {
+				printErrorDetails(exec.Data)
+			}
+
+			if showData && exec.Data != nil {
+				printNodeData(exec.Data)
+			}
+
 			return nil
 		},
 	}
+
+	cmd.Flags().BoolVar(&showData, "data", false, "Include per-node execution data")
+
+	return cmd
+}
+
+// printErrorDetails extracts and prints the last executed node and its error
+// from the execution data. The expected structure is:
+//
+//	data.resultData.lastNodeExecuted  -> string
+//	data.resultData.runData[node]     -> []run
+//	run.error.message                 -> string
+func printErrorDetails(data map[string]interface{}) {
+	resultData, ok := data["resultData"].(map[string]interface{})
+	if !ok {
+		return
+	}
+
+	lastNode, _ := resultData["lastNodeExecuted"].(string)
+	errorMsg := nodeErrorMessage(resultData, lastNode)
+
+	if lastNode != "" {
+		fmt.Printf("Last Node: %s\n", lastNode)
+	}
+	if errorMsg != "" {
+		fmt.Printf("Node Error: %s\n", errorMsg)
+	}
+}
+
+// nodeErrorMessage extracts the error message from the last run of the given node.
+func nodeErrorMessage(resultData map[string]interface{}, nodeName string) string {
+	if nodeName == "" {
+		return ""
+	}
+	runData, ok := resultData["runData"].(map[string]interface{})
+	if !ok {
+		return ""
+	}
+	nodeRuns, ok := runData[nodeName].([]interface{})
+	if !ok || len(nodeRuns) == 0 {
+		return ""
+	}
+	lastRun, ok := nodeRuns[len(nodeRuns)-1].(map[string]interface{})
+	if !ok {
+		return ""
+	}
+	errObj, ok := lastRun["error"].(map[string]interface{})
+	if !ok {
+		return ""
+	}
+	msg, _ := errObj["message"].(string)
+	return msg
+}
+
+func printNodeData(data map[string]interface{}) {
+	resultData, ok := data["resultData"].(map[string]interface{})
+	if !ok {
+		return
+	}
+	runData, ok := resultData["runData"].(map[string]interface{})
+	if !ok {
+		return
+	}
+
+	fmt.Printf("\nNode Execution Data:\n")
+	fmt.Printf("────────────────────\n")
+
+	for nodeName, nodeRuns := range runData {
+		runs, ok := nodeRuns.([]interface{})
+		if !ok || len(runs) == 0 {
+			continue
+		}
+
+		// Use the last run entry for this node
+		run, ok := runs[len(runs)-1].(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		// Determine status
+		nodeStatus := "success"
+		if _, hasError := run["error"]; hasError {
+			nodeStatus = "error"
+		}
+
+		// Get execution time
+		execTimeMs := ""
+		if et, ok := run["executionTime"].(float64); ok {
+			execTimeMs = fmt.Sprintf("%dms", int(et))
+		}
+
+		// Count input/output items
+		inputItems, outputItems := countItems(run)
+
+		fmt.Printf("\n  %s\n", nodeName)
+		fmt.Printf("    Status: %s\n", nodeStatus)
+		if inputItems >= 0 || outputItems >= 0 {
+			parts := []string{}
+			if inputItems >= 0 {
+				parts = append(parts, fmt.Sprintf("%d input", inputItems))
+			}
+			if outputItems >= 0 {
+				parts = append(parts, fmt.Sprintf("%d output", outputItems))
+			}
+			fmt.Printf("    Items: %s\n", strings.Join(parts, ", "))
+		}
+		if execTimeMs != "" {
+			fmt.Printf("    Time: %s\n", execTimeMs)
+		}
+	}
+}
+
+func countItems(run map[string]interface{}) (input, output int) {
+	countInMain := func(data map[string]interface{}) int {
+		main, ok := data["main"].([]interface{})
+		if !ok {
+			return -1
+		}
+		count := 0
+		for _, branch := range main {
+			if items, ok := branch.([]interface{}); ok {
+				count += len(items)
+			}
+		}
+		return count
+	}
+
+	input = -1
+	if inputData, ok := run["inputData"].(map[string]interface{}); ok {
+		input = countInMain(inputData)
+	}
+
+	output = -1
+	if data, ok := run["data"].(map[string]interface{}); ok {
+		output = countInMain(data)
+	}
+
+	return
 }
 
 func newRetryCmd() *cobra.Command {
