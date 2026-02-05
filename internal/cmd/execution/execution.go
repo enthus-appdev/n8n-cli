@@ -262,6 +262,12 @@ func newViewCmd() *cobra.Command {
 	return cmd
 }
 
+// printErrorDetails extracts and prints the last executed node and its error
+// from the execution data. The expected structure is:
+//
+//	data.resultData.lastNodeExecuted  -> string
+//	data.resultData.runData[node]     -> []run
+//	run.error.message                 -> string
 func printErrorDetails(data map[string]interface{}) {
 	resultData, ok := data["resultData"].(map[string]interface{})
 	if !ok {
@@ -269,24 +275,7 @@ func printErrorDetails(data map[string]interface{}) {
 	}
 
 	lastNode, _ := resultData["lastNodeExecuted"].(string)
-
-	// Find error message from the last node's run data
-	var errorMsg string
-	if runData, ok := resultData["runData"].(map[string]interface{}); ok && lastNode != "" {
-		if nodeRuns, ok := runData[lastNode].([]interface{}); ok && len(nodeRuns) > 0 {
-			if lastRun, ok := nodeRuns[len(nodeRuns)-1].(map[string]interface{}); ok {
-				if errObj, ok := lastRun["error"].(map[string]interface{}); ok {
-					if msg, ok := errObj["message"].(string); ok {
-						errorMsg = msg
-					}
-				}
-			}
-		}
-	}
-
-	if lastNode == "" && errorMsg == "" {
-		return
-	}
+	errorMsg := nodeErrorMessage(resultData, lastNode)
 
 	if lastNode != "" {
 		fmt.Printf("Last Node: %s\n", lastNode)
@@ -294,6 +283,31 @@ func printErrorDetails(data map[string]interface{}) {
 	if errorMsg != "" {
 		fmt.Printf("Node Error: %s\n", errorMsg)
 	}
+}
+
+// nodeErrorMessage extracts the error message from the last run of the given node.
+func nodeErrorMessage(resultData map[string]interface{}, nodeName string) string {
+	if nodeName == "" {
+		return ""
+	}
+	runData, ok := resultData["runData"].(map[string]interface{})
+	if !ok {
+		return ""
+	}
+	nodeRuns, ok := runData[nodeName].([]interface{})
+	if !ok || len(nodeRuns) == 0 {
+		return ""
+	}
+	lastRun, ok := nodeRuns[len(nodeRuns)-1].(map[string]interface{})
+	if !ok {
+		return ""
+	}
+	errObj, ok := lastRun["error"].(map[string]interface{})
+	if !ok {
+		return ""
+	}
+	msg, _ := errObj["message"].(string)
+	return msg
 }
 
 func printNodeData(data map[string]interface{}) {
@@ -355,31 +369,28 @@ func printNodeData(data map[string]interface{}) {
 }
 
 func countItems(run map[string]interface{}) (input, output int) {
-	input = -1
-	output = -1
-
-	// Input items from inputData
-	if inputData, ok := run["inputData"].(map[string]interface{}); ok {
-		if main, ok := inputData["main"].([]interface{}); ok {
-			input = 0
-			for _, branch := range main {
-				if items, ok := branch.([]interface{}); ok {
-					input += len(items)
-				}
+	countInMain := func(data map[string]interface{}) int {
+		main, ok := data["main"].([]interface{})
+		if !ok {
+			return -1
+		}
+		count := 0
+		for _, branch := range main {
+			if items, ok := branch.([]interface{}); ok {
+				count += len(items)
 			}
 		}
+		return count
 	}
 
-	// Output items from data.main
+	input = -1
+	if inputData, ok := run["inputData"].(map[string]interface{}); ok {
+		input = countInMain(inputData)
+	}
+
+	output = -1
 	if data, ok := run["data"].(map[string]interface{}); ok {
-		if main, ok := data["main"].([]interface{}); ok {
-			output = 0
-			for _, branch := range main {
-				if items, ok := branch.([]interface{}); ok {
-					output += len(items)
-				}
-			}
-		}
+		output = countInMain(data)
 	}
 
 	return
