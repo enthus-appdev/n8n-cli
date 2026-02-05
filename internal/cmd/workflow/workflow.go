@@ -496,9 +496,11 @@ func newDeactivateCmd() *cobra.Command {
 }
 
 func newTransferCmd() *cobra.Command {
-	return &cobra.Command{
+	var skipCredentials bool
+
+	cmd := &cobra.Command{
 		Use:   "transfer <workflow-id> <project-id>",
-		Short: "Transfer a workflow to another project",
+		Short: "Transfer a workflow and its credentials to another project",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, err := getClient()
@@ -506,14 +508,65 @@ func newTransferCmd() *cobra.Command {
 				return err
 			}
 
-			if err := client.TransferWorkflow(args[0], args[1]); err != nil {
+			workflowID := args[0]
+			projectID := args[1]
+
+			// Transfer credentials first so the workflow doesn't lose access
+			if !skipCredentials {
+				wf, err := client.GetWorkflow(workflowID)
+				if err != nil {
+					return fmt.Errorf("failed to get workflow: %w", err)
+				}
+
+				credIDs := extractCredentialIDs(wf)
+				for _, credID := range credIDs {
+					if err := client.TransferCredential(credID, projectID); err != nil {
+						fmt.Fprintf(os.Stderr, "Warning: failed to transfer credential %s: %v\n", credID, err)
+					} else {
+						fmt.Printf("Transferred credential %s\n", credID)
+					}
+				}
+			}
+
+			if err := client.TransferWorkflow(workflowID, projectID); err != nil {
 				return fmt.Errorf("failed to transfer workflow: %w", err)
 			}
 
-			fmt.Printf("Workflow %s transferred to project %s.\n", args[0], args[1])
+			fmt.Printf("Workflow %s transferred to project %s.\n", workflowID, projectID)
 			return nil
 		},
 	}
+
+	cmd.Flags().BoolVar(&skipCredentials, "skip-credentials", false, "Don't transfer credentials used by the workflow")
+
+	return cmd
+}
+
+// extractCredentialIDs returns unique credential IDs used by a workflow's nodes.
+func extractCredentialIDs(wf *api.Workflow) []string {
+	seen := make(map[string]bool)
+	var ids []string
+
+	for _, node := range wf.Nodes {
+		creds, ok := node["credentials"].(map[string]interface{})
+		if !ok {
+			continue
+		}
+		for _, cred := range creds {
+			credMap, ok := cred.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			id, ok := credMap["id"].(string)
+			if !ok || id == "" || seen[id] {
+				continue
+			}
+			seen[id] = true
+			ids = append(ids, id)
+		}
+	}
+
+	return ids
 }
 
 func boolPtr(b bool) *bool {
