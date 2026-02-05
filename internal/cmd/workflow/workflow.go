@@ -156,7 +156,8 @@ func newViewCmd() *cobra.Command {
 			}
 			fmt.Printf("Active: %s\n", activeStr)
 
-			// Show project info from shared field
+			// Show project info from shared field.
+			// n8n's API always returns exactly one owner entry per workflow.
 			if len(wf.Shared) > 0 {
 				s := wf.Shared[0]
 				if s.Project != nil {
