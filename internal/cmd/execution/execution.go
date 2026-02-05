@@ -181,7 +181,9 @@ func newListCmd() *cobra.Command {
 }
 
 func newViewCmd() *cobra.Command {
-	return &cobra.Command{
+	var showData bool
+
+	cmd := &cobra.Command{
 		Use:   "view <execution-id>",
 		Short: "View execution details",
 		Args:  cobra.ExactArgs(1),
@@ -191,7 +193,7 @@ func newViewCmd() *cobra.Command {
 				return err
 			}
 
-			exec, err := client.GetExecution(args[0])
+			exec, err := client.GetExecution(args[0], showData)
 			if err != nil {
 				return fmt.Errorf("failed to get execution: %w", err)
 			}
@@ -240,9 +242,106 @@ func newViewCmd() *cobra.Command {
 				fmt.Printf("\nError: %s\n", exec.Error)
 			}
 
+			if showData && exec.Data != nil {
+				printNodeData(exec.Data)
+			}
+
 			return nil
 		},
 	}
+
+	cmd.Flags().BoolVar(&showData, "data", false, "Include per-node execution data")
+
+	return cmd
+}
+
+func printNodeData(data map[string]interface{}) {
+	resultData, ok := data["resultData"].(map[string]interface{})
+	if !ok {
+		return
+	}
+	runData, ok := resultData["runData"].(map[string]interface{})
+	if !ok {
+		return
+	}
+
+	fmt.Printf("\nNode Execution Data:\n")
+	fmt.Printf("────────────────────\n")
+
+	for nodeName, nodeRuns := range runData {
+		runs, ok := nodeRuns.([]interface{})
+		if !ok || len(runs) == 0 {
+			continue
+		}
+
+		// Use the last run entry for this node
+		run, ok := runs[len(runs)-1].(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		// Determine status
+		nodeStatus := "success"
+		if _, hasError := run["error"]; hasError {
+			nodeStatus = "error"
+		}
+
+		// Get execution time
+		execTimeMs := ""
+		if et, ok := run["executionTime"].(float64); ok {
+			execTimeMs = fmt.Sprintf("%dms", int(et))
+		}
+
+		// Count input/output items
+		inputItems, outputItems := countItems(run)
+
+		fmt.Printf("\n  %s\n", nodeName)
+		fmt.Printf("    Status: %s\n", nodeStatus)
+		if inputItems >= 0 || outputItems >= 0 {
+			parts := []string{}
+			if inputItems >= 0 {
+				parts = append(parts, fmt.Sprintf("%d input", inputItems))
+			}
+			if outputItems >= 0 {
+				parts = append(parts, fmt.Sprintf("%d output", outputItems))
+			}
+			fmt.Printf("    Items: %s\n", strings.Join(parts, ", "))
+		}
+		if execTimeMs != "" {
+			fmt.Printf("    Time: %s\n", execTimeMs)
+		}
+	}
+}
+
+func countItems(run map[string]interface{}) (input, output int) {
+	input = -1
+	output = -1
+
+	// Input items from inputData
+	if inputData, ok := run["inputData"].(map[string]interface{}); ok {
+		if main, ok := inputData["main"].([]interface{}); ok {
+			input = 0
+			for _, branch := range main {
+				if items, ok := branch.([]interface{}); ok {
+					input += len(items)
+				}
+			}
+		}
+	}
+
+	// Output items from data.main
+	if data, ok := run["data"].(map[string]interface{}); ok {
+		if main, ok := data["main"].([]interface{}); ok {
+			output = 0
+			for _, branch := range main {
+				if items, ok := branch.([]interface{}); ok {
+					output += len(items)
+				}
+			}
+		}
+	}
+
+	return
 }
 
 func newRetryCmd() *cobra.Command {
