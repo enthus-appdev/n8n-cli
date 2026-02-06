@@ -1,5 +1,16 @@
 version: 2
 updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: daily
+      time: "04:00"
+    labels:
+      - dependencies
+      - github-actions
+    commit-message:
+      prefix: chore
+      include: scope
   - package-ecosystem: gomod
     directory: /
     schedule:
@@ -8,6 +19,7 @@ updates:
     labels:
       - dependencies
       - golang
+      - go
     commit-message:
       prefix: chore
       include: scope
