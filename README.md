@@ -20,7 +20,7 @@ go install github.com/enthus-appdev/n8n-cli/cmd/n8nctl@latest
 # Or build locally
 git clone https://github.com/enthus-appdev/n8n-cli.git
 cd n8n-cli
-go build -o bin/n8nctl ./cmd/n8nctl
+go build -ldflags "-X github.com/enthus-appdev/n8n-cli/internal/cmd.version=dev" -o bin/n8nctl ./cmd/n8nctl
 ```
 
 ## Quick Start
