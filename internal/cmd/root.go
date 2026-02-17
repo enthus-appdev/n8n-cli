@@ -73,7 +73,7 @@ func PrintJSON(v interface{}) error {
 // PrintError outputs an error in the appropriate format
 func PrintError(err error) {
 	if jsonOutput {
-		PrintJSON(map[string]string{"error": err.Error()})
+		_ = PrintJSON(map[string]string{"error": err.Error()})
 	} else {
 		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
 	}
