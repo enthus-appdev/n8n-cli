@@ -20,7 +20,7 @@ go install github.com/enthus-appdev/n8n-cli/cmd/n8nctl@latest
 # Or build locally
 git clone https://github.com/enthus-appdev/n8n-cli.git
 cd n8n-cli
-make build
+go build -ldflags "-X github.com/enthus-appdev/n8n-cli/internal/cmd.version=dev" -o bin/n8nctl ./cmd/n8nctl
 ```
 
 ## Quick Start
@@ -141,4 +141,4 @@ Config is stored in `~/.config/n8n-cli/config.json`
 
 ## License
 
-MIT + Commons Clause - Free to use, modify, and distribute. Cannot be sold as a product or service. See [LICENSE](LICENSE) for details.
+MIT License - See [LICENSE](LICENSE) for details.
