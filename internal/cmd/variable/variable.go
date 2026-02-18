@@ -121,37 +121,71 @@ func newGetCmd() *cobra.Command {
 }
 
 func newCreateCmd() *cobra.Command {
+	var valueFlag string
+
 	cmd := &cobra.Command{
-		Use:   "create <key> <value>",
+		Use:   "create <key> [value]",
 		Short: "Create a new variable",
-		Args:  cobra.ExactArgs(2),
+		Long: `Create a new variable. The value can be passed as a positional argument
+or via the --value flag. The flag form is useful for values containing
+special shell characters (e.g. n8nctl var create key --value 'b!xyz').`,
+		Args: cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, err := getClient()
 			if err != nil {
 				return err
 			}
 
-			if err := client.CreateVariable(args[0], args[1]); err != nil {
+			key := args[0]
+			var value string
+			switch {
+			case len(args) == 2:
+				value = args[1]
+			case valueFlag != "":
+				value = valueFlag
+			default:
+				return fmt.Errorf("value is required: pass as second argument or use --value")
+			}
+
+			if err := client.CreateVariable(key, value); err != nil {
 				return fmt.Errorf("failed to create variable: %w", err)
 			}
 
-			fmt.Printf("Created variable: %s\n", args[0])
+			fmt.Printf("Created variable: %s\n", key)
 			return nil
 		},
 	}
+
+	cmd.Flags().StringVar(&valueFlag, "value", "", "Variable value (alternative to positional argument)")
 
 	return cmd
 }
 
 func newUpdateCmd() *cobra.Command {
+	var valueFlag string
+
 	cmd := &cobra.Command{
-		Use:   "update <key> <value>",
+		Use:   "update <key> [value]",
 		Short: "Update a variable by key",
-		Args:  cobra.ExactArgs(2),
+		Long: `Update a variable. The value can be passed as a positional argument
+or via the --value flag. The flag form is useful for values containing
+special shell characters (e.g. n8nctl var update key --value 'b!xyz').`,
+		Args: cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, err := getClient()
 			if err != nil {
 				return err
+			}
+
+			key := args[0]
+			var value string
+			switch {
+			case len(args) == 2:
+				value = args[1]
+			case valueFlag != "":
+				value = valueFlag
+			default:
+				return fmt.Errorf("value is required: pass as second argument or use --value")
 			}
 
 			// Resolve key to ID
@@ -160,10 +194,9 @@ func newUpdateCmd() *cobra.Command {
 				return fmt.Errorf("failed to list variables: %w", err)
 			}
 
-			key := args[0]
 			for _, v := range vars {
 				if v.Key == key {
-					if err := client.UpdateVariable(v.ID, key, args[1]); err != nil {
+					if err := client.UpdateVariable(v.ID, key, value); err != nil {
 						return fmt.Errorf("failed to update variable: %w", err)
 					}
 					fmt.Printf("Updated variable: %s\n", key)
@@ -174,6 +207,8 @@ func newUpdateCmd() *cobra.Command {
 			return fmt.Errorf("variable %q not found", key)
 		},
 	}
+
+	cmd.Flags().StringVar(&valueFlag, "value", "", "Variable value (alternative to positional argument)")
 
 	return cmd
 }

@@ -31,17 +31,17 @@ func NewClient(baseURL, apiKey string) *Client {
 
 // Workflow represents an n8n workflow
 type Workflow struct {
-	ID        string                   `json:"id,omitempty"`
-	Name      string                   `json:"name"`
-	Active    bool                     `json:"active"`
-	Nodes     []map[string]interface{} `json:"nodes"`
-	Connections map[string]interface{} `json:"connections"`
-	Settings    map[string]interface{} `json:"settings,omitempty"`
-	StaticData  interface{}            `json:"staticData,omitempty"`
-	Tags        []Tag                  `json:"tags,omitempty"`
-	Shared      []WorkflowShared       `json:"shared,omitempty"`
-	CreatedAt   *time.Time             `json:"createdAt,omitempty"`
-	UpdatedAt   *time.Time             `json:"updatedAt,omitempty"`
+	ID          string                   `json:"id,omitempty"`
+	Name        string                   `json:"name"`
+	Active      bool                     `json:"active"`
+	Nodes       []map[string]interface{} `json:"nodes"`
+	Connections map[string]interface{}   `json:"connections"`
+	Settings    map[string]interface{}   `json:"settings,omitempty"`
+	StaticData  interface{}              `json:"staticData,omitempty"`
+	Tags        []Tag                    `json:"tags,omitempty"`
+	Shared      []WorkflowShared         `json:"shared,omitempty"`
+	CreatedAt   *time.Time               `json:"createdAt,omitempty"`
+	UpdatedAt   *time.Time               `json:"updatedAt,omitempty"`
 }
 
 // Tag represents a workflow tag
@@ -82,13 +82,13 @@ type Execution struct {
 
 // ListWorkflowsOptions contains options for listing workflows
 type ListWorkflowsOptions struct {
-	Active           *bool
-	Tags             []string
-	Name             string
-	ProjectID        string
+	Active            *bool
+	Tags              []string
+	Name              string
+	ProjectID         string
 	ExcludePinnedData bool
-	Limit            int
-	Cursor           string
+	Limit             int
+	Cursor            string
 }
 
 // ListExecutionsOptions contains options for listing executions
@@ -614,6 +614,36 @@ func (c *Client) TransferCredential(id, destinationProjectID string) error {
 	}
 	_, err := c.request(http.MethodPut, "/credentials/"+url.PathEscape(id)+"/transfer", body)
 	return err
+}
+
+// TriggerWebhook triggers a workflow via its webhook URL.
+// The path is the webhook path (e.g. a UUID), and method is the HTTP method (GET, POST, etc.).
+// Webhooks are public endpoints, so no API key is sent.
+func (c *Client) TriggerWebhook(path, method string) ([]byte, error) {
+	reqURL := c.baseURL + "/webhook/" + path
+	req, err := http.NewRequest(method, reqURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+
+	if resp.StatusCode >= 400 {
+		return nil, fmt.Errorf("webhook error (%d): %s", resp.StatusCode, string(respBody))
+	}
+
+	return respBody, nil
 }
 
 // --- Variables ---

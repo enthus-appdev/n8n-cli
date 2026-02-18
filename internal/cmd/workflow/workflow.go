@@ -407,18 +407,52 @@ func pushDirectory(client *api.Client, dir string, create bool) error {
 
 func newRunCmd() *cobra.Command {
 	var (
-		inputJSON string
-		wait      bool
+		inputJSON   string
+		wait        bool
+		webhookPath string
+		method      string
 	)
 
 	cmd := &cobra.Command{
 		Use:   "run <workflow-id>",
 		Short: "Execute a workflow",
-		Args:  cobra.ExactArgs(1),
+		Long: `Execute a workflow via the API or via a webhook trigger.
+
+By default, uses the /execute API endpoint. If your n8n instance doesn't
+support this endpoint (returns 405), use --webhook to trigger via webhook instead.
+
+Examples:
+  n8nctl wf run abc123                         # Execute via API
+  n8nctl wf run abc123 --webhook my-hook-path  # Trigger via webhook (GET)
+  n8nctl wf run abc123 --webhook my-hook-path --method POST`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, err := getClient()
 			if err != nil {
 				return err
+			}
+
+			// Webhook mode: trigger via webhook URL instead of execute API
+			if webhookPath != "" {
+				respBody, err := client.TriggerWebhook(webhookPath, method)
+				if err != nil {
+					return fmt.Errorf("failed to trigger webhook: %w", err)
+				}
+
+				jsonFlag, _ := cmd.Flags().GetBool("json")
+				if jsonFlag {
+					// Try to pretty-print if valid JSON, otherwise print raw
+					var parsed interface{}
+					if json.Unmarshal(respBody, &parsed) == nil {
+						return printJSON(parsed)
+					}
+				}
+
+				fmt.Printf("Webhook triggered successfully.\n")
+				if len(respBody) > 0 {
+					fmt.Printf("Response: %s\n", string(respBody))
+				}
+				return nil
 			}
 
 			var inputData map[string]interface{}
@@ -430,6 +464,11 @@ func newRunCmd() *cobra.Command {
 
 			execution, err := client.ExecuteWorkflow(args[0], inputData, wait)
 			if err != nil {
+				if strings.Contains(err.Error(), "405") {
+					fmt.Fprintf(os.Stderr, "Hint: The /execute API endpoint returned 405. This endpoint may not be available on your n8n instance.\n")
+					fmt.Fprintf(os.Stderr, "Use --webhook to trigger the workflow via its webhook URL instead:\n")
+					fmt.Fprintf(os.Stderr, "  n8nctl wf run %s --webhook <webhook-path>\n", args[0])
+				}
 				return fmt.Errorf("failed to execute workflow: %w", err)
 			}
 
@@ -450,6 +489,8 @@ func newRunCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&inputJSON, "input", "i", "", "Input data as JSON")
 	cmd.Flags().BoolVarP(&wait, "wait", "w", false, "Wait for execution to complete")
+	cmd.Flags().StringVar(&webhookPath, "webhook", "", "Trigger via webhook path instead of execute API")
+	cmd.Flags().StringVar(&method, "method", "GET", "HTTP method for webhook trigger")
 
 	return cmd
 }
