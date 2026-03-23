@@ -108,10 +108,6 @@ func newListCmd() *cobra.Command {
 				fmt.Printf("%-18s  %-6s  %s\n", wf.ID, activeStr, wf.Name)
 			}
 
-			if result.NextCursor != "" {
-				fmt.Printf("\nMore results available. Use --cursor %s to continue.\n", result.NextCursor)
-			}
-
 			return nil
 		},
 	}
@@ -119,8 +115,8 @@ func newListCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&active, "active", false, "Show only active workflows")
 	cmd.Flags().BoolVar(&inactive, "inactive", false, "Show only inactive workflows")
 	cmd.Flags().StringSliceVar(&tags, "tag", nil, "Filter by tag (can be repeated)")
-	cmd.Flags().IntVar(&limit, "limit", 100, "Maximum number of workflows to return")
-	cmd.Flags().StringVar(&cursor, "cursor", "", "Pagination cursor for next page")
+	cmd.Flags().IntVar(&limit, "limit", 0, "Maximum number of workflows per page (0 = auto-paginate all)")
+	cmd.Flags().StringVar(&cursor, "cursor", "", "Pagination cursor (fetches single page only)")
 	cmd.Flags().StringVar(&projectID, "project", "", "Filter by project ID")
 	cmd.Flags().StringVar(&name, "name", "", "Filter by workflow name")
 
