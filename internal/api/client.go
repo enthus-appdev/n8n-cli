@@ -11,6 +11,8 @@ import (
 	"time"
 )
 
+const defaultListPageSize = 250
+
 // Client is the n8n API client
 type Client struct {
 	baseURL    string
@@ -170,8 +172,8 @@ func (c *Client) request(method, path string, body interface{}) ([]byte, error) 
 	return respBody, nil
 }
 
-// ListWorkflows returns all workflows
-func (c *Client) ListWorkflows(opts ListWorkflowsOptions) (*ListResult[Workflow], error) {
+// listWorkflowsPage fetches a single page of workflows.
+func (c *Client) listWorkflowsPage(opts ListWorkflowsOptions) (*ListResult[Workflow], error) {
 	params := url.Values{}
 	if opts.Limit > 0 {
 		params.Set("limit", strconv.Itoa(opts.Limit))
@@ -211,6 +213,39 @@ func (c *Client) ListWorkflows(opts ListWorkflowsOptions) (*ListResult[Workflow]
 	}
 
 	return &resp, nil
+}
+
+// ListWorkflows returns all workflows, auto-paginating through all pages.
+// If opts.Cursor is set, only that single page is returned (manual pagination).
+func (c *Client) ListWorkflows(opts ListWorkflowsOptions) (*ListResult[Workflow], error) {
+	// Manual pagination: caller provided a cursor, return single page
+	if opts.Cursor != "" {
+		return c.listWorkflowsPage(opts)
+	}
+
+	pageSize := opts.Limit
+	if pageSize <= 0 {
+		pageSize = defaultListPageSize
+	}
+
+	var all []Workflow
+	pageOpts := opts
+	pageOpts.Limit = pageSize
+
+	for {
+		page, err := c.listWorkflowsPage(pageOpts)
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, page.Data...)
+
+		if page.NextCursor == "" || len(page.Data) == 0 {
+			break
+		}
+		pageOpts.Cursor = page.NextCursor
+	}
+
+	return &ListResult[Workflow]{Data: all}, nil
 }
 
 // GetWorkflow returns a workflow by ID
