@@ -11,6 +11,8 @@ import (
 	"time"
 )
 
+const defaultListPageSize = 250
+
 // Client is the n8n API client
 type Client struct {
 	baseURL    string
@@ -223,7 +225,7 @@ func (c *Client) ListWorkflows(opts ListWorkflowsOptions) (*ListResult[Workflow]
 
 	pageSize := opts.Limit
 	if pageSize <= 0 {
-		pageSize = 250
+		pageSize = defaultListPageSize
 	}
 
 	var all []Workflow
