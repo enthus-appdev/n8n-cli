@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"runtime/debug"
 
 	"github.com/spf13/cobra"
 
@@ -15,9 +16,7 @@ import (
 )
 
 var (
-	version    = "dev"
-	commit     = "none"
-	date       = "unknown"
+	version    string
 	jsonOutput bool
 )
 
@@ -32,7 +31,8 @@ automation, and LLM-assisted workflow development.`,
 	SilenceUsage: true,
 }
 
-func Execute() error {
+func Execute(ver string) error {
+	version = ver
 	return rootCmd.Execute()
 }
 
@@ -52,14 +52,36 @@ func newVersionCmd() *cobra.Command {
 		Use:   "version",
 		Short: "Print the version number",
 		Run: func(cmd *cobra.Command, args []string) {
+			commit, date := vcsInfo()
 			if jsonOutput {
 				out, _ := json.Marshal(map[string]string{"version": version, "commit": commit, "date": date})
 				fmt.Println(string(out))
 			} else {
-				fmt.Printf("n8n-cli %s\ncommit: %s\nbuilt: %s\n", version, commit, date)
+				fmt.Printf("n8n-cli %s\ncommit: %s\nbuilt:  %s\n", version, commit, date)
 			}
 		},
 	}
+}
+
+func vcsInfo() (commit, date string) {
+	commit, date = "unknown", "unknown"
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return
+	}
+	for _, s := range info.Settings {
+		switch s.Key {
+		case "vcs.revision":
+			if len(s.Value) >= 7 {
+				commit = s.Value[:7]
+			} else {
+				commit = s.Value
+			}
+		case "vcs.time":
+			date = s.Value
+		}
+	}
+	return
 }
 
 // IsJSONOutput returns whether JSON output is enabled

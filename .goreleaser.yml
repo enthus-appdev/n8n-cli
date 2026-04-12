@@ -16,9 +16,7 @@ builds:
       - arm64
     ldflags:
       - -s -w
-      - -X github.com/enthus-appdev/n8n-cli/internal/cmd.version={{.Version}}
-      - -X github.com/enthus-appdev/n8n-cli/internal/cmd.commit={{.ShortCommit}}
-      - -X github.com/enthus-appdev/n8n-cli/internal/cmd.date={{.Date}}
+      - -X main.version={{.Version}}
 
 archives:
   - formats:
