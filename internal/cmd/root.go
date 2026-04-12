@@ -15,7 +15,9 @@ import (
 )
 
 var (
-	version = "dev"
+	version    = "dev"
+	commit     = "none"
+	date       = "unknown"
 	jsonOutput bool
 )
 
@@ -51,10 +53,10 @@ func newVersionCmd() *cobra.Command {
 		Short: "Print the version number",
 		Run: func(cmd *cobra.Command, args []string) {
 			if jsonOutput {
-				out, _ := json.Marshal(map[string]string{"version": version})
+				out, _ := json.Marshal(map[string]string{"version": version, "commit": commit, "date": date})
 				fmt.Println(string(out))
 			} else {
-				fmt.Printf("n8n-cli %s\n", version)
+				fmt.Printf("n8n-cli %s\ncommit: %s\nbuilt: %s\n", version, commit, date)
 			}
 		},
 	}
