@@ -65,6 +65,7 @@ func newVersionCmd() *cobra.Command {
 
 func vcsInfo() (commit, date string) {
 	commit, date = "unknown", "unknown"
+	var modified bool
 	info, ok := debug.ReadBuildInfo()
 	if !ok {
 		return
@@ -72,14 +73,19 @@ func vcsInfo() (commit, date string) {
 	for _, s := range info.Settings {
 		switch s.Key {
 		case "vcs.revision":
-			if len(s.Value) >= 7 {
+			if len(s.Value) > 7 {
 				commit = s.Value[:7]
 			} else {
 				commit = s.Value
 			}
 		case "vcs.time":
 			date = s.Value
+		case "vcs.modified":
+			modified = s.Value == "true"
 		}
+	}
+	if modified {
+		commit += "-dirty"
 	}
 	return
 }
