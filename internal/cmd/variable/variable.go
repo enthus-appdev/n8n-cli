@@ -20,6 +20,8 @@ func NewVariableCmd() *cobra.Command {
 		Long:    `List, create, update, and delete n8n environment variables.`,
 	}
 
+	cmd.PersistentFlags().String("project", "", "Project ID (omit for global variables)")
+
 	cmd.AddCommand(newListCmd())
 	cmd.AddCommand(newGetCmd())
 	cmd.AddCommand(newCreateCmd())
@@ -53,7 +55,8 @@ func newListCmd() *cobra.Command {
 				return err
 			}
 
-			vars, err := client.ListVariables(0, "")
+			projectID, _ := cmd.Flags().GetString("project")
+			vars, err := client.ListVariables(0, "", projectID)
 			if err != nil {
 				return fmt.Errorf("failed to list variables: %w", err)
 			}
@@ -68,14 +71,34 @@ func newListCmd() *cobra.Command {
 				return nil
 			}
 
-			fmt.Printf("%-8s  %-40s  %s\n", "ID", "KEY", "VALUE")
-			fmt.Printf("%-8s  %-40s  %s\n", strings.Repeat("-", 8), strings.Repeat("-", 40), strings.Repeat("-", 50))
+			hasProject := false
+			for _, v := range vars {
+				if v.ProjectID != "" {
+					hasProject = true
+					break
+				}
+			}
+
+			if hasProject {
+				fmt.Printf("%-8s  %-18s  %-40s  %s\n", "ID", "PROJECT", "KEY", "VALUE")
+				fmt.Printf("%-8s  %-18s  %-40s  %s\n",
+					strings.Repeat("-", 8), strings.Repeat("-", 18),
+					strings.Repeat("-", 40), strings.Repeat("-", 50))
+			} else {
+				fmt.Printf("%-8s  %-40s  %s\n", "ID", "KEY", "VALUE")
+				fmt.Printf("%-8s  %-40s  %s\n", strings.Repeat("-", 8), strings.Repeat("-", 40), strings.Repeat("-", 50))
+			}
+
 			for _, v := range vars {
 				value := v.Value
 				if len(value) > 50 {
 					value = value[:47] + "..."
 				}
-				fmt.Printf("%-8s  %-40s  %s\n", v.ID, v.Key, value)
+				if hasProject {
+					fmt.Printf("%-8s  %-18s  %-40s  %s\n", v.ID, v.ProjectID, v.Key, value)
+				} else {
+					fmt.Printf("%-8s  %-40s  %s\n", v.ID, v.Key, value)
+				}
 			}
 
 			return nil
@@ -96,7 +119,8 @@ func newGetCmd() *cobra.Command {
 				return err
 			}
 
-			vars, err := client.ListVariables(0, "")
+			projectID, _ := cmd.Flags().GetString("project")
+			vars, err := client.ListVariables(0, "", projectID)
 			if err != nil {
 				return fmt.Errorf("failed to list variables: %w", err)
 			}
@@ -147,7 +171,8 @@ special shell characters (e.g. n8nctl var create key --value 'b!xyz').`,
 				return fmt.Errorf("value is required: pass as second argument or use --value")
 			}
 
-			if err := client.CreateVariable(key, value); err != nil {
+			projectID, _ := cmd.Flags().GetString("project")
+			if err := client.CreateVariable(key, value, projectID); err != nil {
 				return fmt.Errorf("failed to create variable: %w", err)
 			}
 
@@ -188,8 +213,9 @@ special shell characters (e.g. n8nctl var update key --value 'b!xyz').`,
 				return fmt.Errorf("value is required: pass as second argument or use --value")
 			}
 
-			// Resolve key to ID
-			vars, err := client.ListVariables(0, "")
+			// Resolve key to ID within the given project scope.
+			projectID, _ := cmd.Flags().GetString("project")
+			vars, err := client.ListVariables(0, "", projectID)
 			if err != nil {
 				return fmt.Errorf("failed to list variables: %w", err)
 			}
@@ -224,8 +250,9 @@ func newDeleteCmd() *cobra.Command {
 				return err
 			}
 
-			// Resolve key to ID
-			vars, err := client.ListVariables(0, "")
+			// Resolve key to ID within the given project scope.
+			projectID, _ := cmd.Flags().GetString("project")
+			vars, err := client.ListVariables(0, "", projectID)
 			if err != nil {
 				return fmt.Errorf("failed to list variables: %w", err)
 			}
