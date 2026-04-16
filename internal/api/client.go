@@ -115,10 +115,11 @@ type Credential struct {
 
 // Variable represents an n8n variable
 type Variable struct {
-	ID    string `json:"id,omitempty"`
-	Key   string `json:"key"`
-	Value string `json:"value"`
-	Type  string `json:"type,omitempty"`
+	ID        string `json:"id,omitempty"`
+	Key       string `json:"key"`
+	Value     string `json:"value"`
+	Type      string `json:"type,omitempty"`
+	ProjectID string `json:"projectId,omitempty"`
 }
 
 // ListResult contains paginated list results
@@ -683,14 +684,17 @@ func (c *Client) TriggerWebhook(path, method string) ([]byte, error) {
 
 // --- Variables ---
 
-// ListVariables returns all variables
-func (c *Client) ListVariables(limit int, cursor string) ([]Variable, error) {
+// ListVariables returns all variables, optionally filtered by project.
+func (c *Client) ListVariables(limit int, cursor string, projectID string) ([]Variable, error) {
 	params := url.Values{}
 	if limit > 0 {
 		params.Set("limit", strconv.Itoa(limit))
 	}
 	if cursor != "" {
 		params.Set("cursor", cursor)
+	}
+	if projectID != "" {
+		params.Set("projectId", projectID)
 	}
 
 	path := "/variables"
@@ -713,9 +717,12 @@ func (c *Client) ListVariables(limit int, cursor string) ([]Variable, error) {
 	return resp.Data, nil
 }
 
-// CreateVariable creates a new variable
-func (c *Client) CreateVariable(key, value string) error {
+// CreateVariable creates a new variable, optionally scoped to a project.
+func (c *Client) CreateVariable(key, value, projectID string) error {
 	body := map[string]string{"key": key, "value": value}
+	if projectID != "" {
+		body["projectId"] = projectID
+	}
 	_, err := c.request(http.MethodPost, "/variables", body)
 	return err
 }
