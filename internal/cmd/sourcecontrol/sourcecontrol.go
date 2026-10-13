@@ -158,7 +158,6 @@ Run 'n8nctl source-control status' to list pending items and their IDs.`,
 	return cmd
 }
 
-// buildPushItems turns --workflow and --item values into push targets.
 func buildPushItems(workflows, items []string) ([]api.SourceControlItem, error) {
 	var out []api.SourceControlItem
 	for _, id := range workflows {
@@ -236,8 +235,6 @@ Run 'n8nctl source-control status --direction pull' first to preview it.`,
 	return cmd
 }
 
-// conflictError lists the conflicting files of a rejected push or pull and
-// points at --force.
 func conflictError(action string, err error) error {
 	var conflict *api.SourceControlConflictError
 	if !errors.As(err, &conflict) {

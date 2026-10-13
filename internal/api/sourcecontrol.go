@@ -67,7 +67,6 @@ func (e *SourceControlConflictError) Error() string {
 	return fmt.Sprintf("source control conflict (%d files): %s", len(e.Conflicts), msg)
 }
 
-// withScopeHint adds the required API key scope to a 403 error.
 func withScopeHint(err error, scope string) error {
 	var apiErr *APIError
 	if errors.As(err, &apiErr) && apiErr.StatusCode == http.StatusForbidden {
@@ -136,13 +135,10 @@ type SourceControlPullOptions struct {
 // SourceControlPull imports the connected branch into the instance.
 // Unlike status and push, the pull endpoint returns a bare array.
 func (c *Client) SourceControlPull(opts SourceControlPullOptions) ([]SourceControlFile, error) {
-	// The request body is required, so an empty options struct is sent as {}.
 	respBody, err := c.request(http.MethodPost, "/source-control/pull", opts)
 	if err != nil {
 		var apiErr *APIError
 		if errors.As(err, &apiErr) && apiErr.StatusCode == http.StatusConflict {
-			// The 409 body lists every file in the pull diff; the conflicting
-			// ones are flagged or still modified locally.
 			var files []SourceControlFile
 			if json.Unmarshal(apiErr.Body, &files) == nil {
 				var conflicts []SourceControlFile
