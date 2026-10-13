@@ -108,7 +108,7 @@ Things to know before using it:
   state, `all` publishes everything imported, `published` republishes only workflows that
   were published before the pull.
 - On a 409 the CLI lists the conflicting items and exits non-zero; rerun with `--force` only
-  after checking them.
+  after checking them. With `--json`, stdout carries `{"error": ..., "conflicts": [...]}`.
 - The API key needs the `sourceControl:read` (status), `sourceControl:push`, or
   `sourceControl:pull` scope, and the instance needs source control connected. A missing
   scope returns 403.

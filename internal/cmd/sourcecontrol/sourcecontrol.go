@@ -134,7 +134,7 @@ Run 'n8nctl source-control status' to list pending items and their IDs.`,
 				Force:         force,
 			})
 			if err != nil {
-				return conflictError("push", err)
+				return conflictError(cmd, "push", err)
 			}
 
 			jsonFlag, _ := cmd.Flags().GetBool("json")
@@ -213,7 +213,7 @@ Run 'n8nctl source-control status --direction pull' first to preview it.`,
 				AutoPublish: autoPublish,
 			})
 			if err != nil {
-				return conflictError("pull", err)
+				return conflictError(cmd, "pull", err)
 			}
 
 			jsonFlag, _ := cmd.Flags().GetBool("json")
@@ -235,16 +235,27 @@ Run 'n8nctl source-control status --direction pull' first to preview it.`,
 	return cmd
 }
 
-func conflictError(action string, err error) error {
+func conflictError(cmd *cobra.Command, action string, err error) error {
 	var conflict *api.SourceControlConflictError
 	if !errors.As(err, &conflict) {
 		return fmt.Errorf("failed to %s: %w", action, err)
+	}
+	wrapped := fmt.Errorf("%s rejected: %w; rerun with --force to override", action, err)
+	if jsonFlag, _ := cmd.Flags().GetBool("json"); jsonFlag {
+		conflicts := conflict.Conflicts
+		if conflicts == nil {
+			conflicts = []api.SourceControlFile{}
+		}
+		if perr := printJSON(map[string]interface{}{"error": wrapped.Error(), "conflicts": conflicts}); perr != nil {
+			return perr
+		}
+		return wrapped
 	}
 	if len(conflict.Conflicts) > 0 {
 		fmt.Fprintln(os.Stderr, "Conflicting items:")
 		printFiles(os.Stderr, conflict.Conflicts)
 	}
-	return fmt.Errorf("%s rejected: %w; rerun with --force to override", action, err)
+	return wrapped
 }
 
 func printFiles(w io.Writer, files []api.SourceControlFile) {
