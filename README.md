@@ -81,7 +81,7 @@ both version IDs and whether the draft has unpublished changes.
 n8nctl workflow history <id>                  # Saved versions, newest first
 n8nctl workflow version <id> <version-id>     # One saved version as JSON
 n8nctl workflow publish <id>                  # Publish the current draft
-n8nctl workflow publish <id> --version <vid>  # Publish (roll back to) a specific version
+n8nctl workflow publish <id> --version <version-id>  # Publish (roll back to) a specific version
 n8nctl workflow unpublish <id>                # Stop running the workflow
 n8nctl workflow archive <id>                  # Soft delete (unpublishes it)
 n8nctl workflow unarchive <id>                # Restore an archived workflow
@@ -188,7 +188,7 @@ n8nctl folder list --project <project-id>
 n8nctl folder view <folder-id> --project <project-id>
 n8nctl folder create <name> --project <project-id> [--parent <folder-id>]
 n8nctl folder update <folder-id> --project <project-id> [--name <name>] [--parent <folder-id>]
-n8nctl folder delete <folder-id> --project <project-id> [--transfer-to <folder-id>]
+n8nctl folder delete <folder-id> --project <project-id> [--transfer-to <target-folder-id>]
 n8nctl user list [--project <project-id>]     # Users with their global role
 n8nctl user view <user-id-or-email>
 ```
