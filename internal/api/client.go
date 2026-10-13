@@ -161,16 +161,32 @@ func (c *Client) request(method, path string, body interface{}) ([]byte, error) 
 	}
 
 	if resp.StatusCode >= 400 {
-		var apiErr struct {
+		apiErr := &APIError{StatusCode: resp.StatusCode, Body: respBody}
+		var msg struct {
 			Message string `json:"message"`
 		}
-		if json.Unmarshal(respBody, &apiErr) == nil && apiErr.Message != "" {
-			return nil, fmt.Errorf("API error (%d): %s", resp.StatusCode, apiErr.Message)
+		if json.Unmarshal(respBody, &msg) == nil {
+			apiErr.Message = msg.Message
 		}
-		return nil, fmt.Errorf("API error (%d): %s", resp.StatusCode, string(respBody))
+		return nil, apiErr
 	}
 
 	return respBody, nil
+}
+
+// APIError is returned for responses with status >= 400. Body keeps the raw
+// response for endpoints that put structured data in error responses.
+type APIError struct {
+	StatusCode int
+	Message    string
+	Body       []byte
+}
+
+func (e *APIError) Error() string {
+	if e.Message != "" {
+		return fmt.Sprintf("API error (%d): %s", e.StatusCode, e.Message)
+	}
+	return fmt.Sprintf("API error (%d): %s", e.StatusCode, string(e.Body))
 }
 
 // listWorkflowsPage fetches a single page of workflows.
