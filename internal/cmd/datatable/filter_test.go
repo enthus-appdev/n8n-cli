@@ -1,6 +1,7 @@
 package datatable
 
 import (
+	"encoding/json"
 	"reflect"
 	"strings"
 	"testing"
@@ -57,8 +58,18 @@ func TestBuildFilter(t *testing.T) {
 	if err != nil {
 		t.Fatalf("buildFilter raw: %v", err)
 	}
-	if f.Filters[0].Value != float64(1) {
+	if f.Filters[0].Value != json.Number("1") {
 		t.Errorf("raw filter value = %#v, want number 1", f.Filters[0].Value)
+	}
+
+	big := `{"filters":[{"columnName":"id","condition":"eq","value":9007199254740993}]}`
+	f, err = buildFilter(nil, big, false)
+	if err != nil {
+		t.Fatalf("buildFilter big: %v", err)
+	}
+	out, _ := json.Marshal(f.Filters[0])
+	if !strings.Contains(string(out), `"value":9007199254740993`) {
+		t.Errorf("big integer re-encoded as %s", out)
 	}
 
 	if f, err := buildFilter(nil, "", false); f != nil || err != nil {
@@ -94,7 +105,14 @@ func TestParseRows(t *testing.T) {
 	if err != nil || len(rows) != 1 {
 		t.Errorf("object: rows = %v, err = %v", rows, err)
 	}
-	for _, bad := range []string{`[]`, `{}`, `null`, `"x"`, `[1]`} {
+	rows, err = parseRows([]byte(`{"n":9007199254740993}`))
+	if err != nil {
+		t.Fatalf("big: %v", err)
+	}
+	if out, _ := json.Marshal(rows[0]); string(out) != `{"n":9007199254740993}` {
+		t.Errorf("big integer re-encoded as %s", out)
+	}
+	for _, bad := range []string{`[]`, `{}`, `null`, `"x"`, `[1]`, `{"a":1} {"b":2}`} {
 		if _, err := parseRows([]byte(bad)); err == nil {
 			t.Errorf("parseRows(%s) succeeded, want error", bad)
 		}

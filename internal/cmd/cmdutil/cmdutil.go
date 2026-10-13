@@ -17,7 +17,7 @@ import (
 func GetClient() (*api.Client, error) {
 	cfg, err := config.Load()
 	if err != nil {
-		return nil, fmt.Errorf("not configured. Run 'n8nctl config init' first")
+		return nil, fmt.Errorf("failed to load config (run 'n8nctl config init' to create one): %w", err)
 	}
 
 	instance, err := cfg.GetCurrentInstance()

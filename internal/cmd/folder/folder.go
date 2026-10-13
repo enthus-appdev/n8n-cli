@@ -152,7 +152,11 @@ func newUpdateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update <folder-id>",
 		Short: "Rename a folder or move it under another folder",
-		Args:  cobra.ExactArgs(1),
+		Long: `Rename a folder or move it under another folder.
+
+The public API has no documented way to move a folder back to the project
+root; use the n8n UI for that.`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if name == "" && parent == "" {
 				return fmt.Errorf("pass --name and/or --parent")

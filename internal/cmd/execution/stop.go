@@ -59,7 +59,7 @@ window (RFC 3339 timestamps).`,
 				if cmdutil.JSONOutput(cmd) {
 					return cmdutil.PrintJSON(exec)
 				}
-				fmt.Printf("Execution %s stopped (status: %s).\n", args[0], exec.Status)
+				fmt.Printf("Stop requested for execution %s; status is now %s.\n", args[0], exec.Status)
 				return nil
 			}
 

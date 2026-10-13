@@ -1,6 +1,7 @@
 package datatable
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -47,7 +48,7 @@ func buildFilter(wheres []string, rawFilter string, or bool) (*api.DataTableFilt
 	}
 	if rawFilter != "" {
 		var f api.DataTableFilter
-		if err := json.Unmarshal([]byte(rawFilter), &f); err != nil {
+		if err := decodeJSON([]byte(rawFilter), &f); err != nil {
 			return nil, fmt.Errorf("invalid --filter JSON: %w", err)
 		}
 		if len(f.Filters) == 0 {
@@ -92,7 +93,7 @@ func parseRows(raw []byte) ([]map[string]interface{}, error) {
 	trimmed := strings.TrimSpace(string(raw))
 	if strings.HasPrefix(trimmed, "[") {
 		var rows []map[string]interface{}
-		if err := json.Unmarshal(raw, &rows); err != nil {
+		if err := decodeJSON(raw, &rows); err != nil {
 			return nil, fmt.Errorf("invalid --data JSON: %w", err)
 		}
 		if len(rows) == 0 {
@@ -109,13 +110,27 @@ func parseRows(raw []byte) ([]map[string]interface{}, error) {
 
 func parseRow(raw []byte) (map[string]interface{}, error) {
 	var row map[string]interface{}
-	if err := json.Unmarshal(raw, &row); err != nil {
+	if err := decodeJSON(raw, &row); err != nil {
 		return nil, fmt.Errorf("invalid --data JSON object: %w", err)
 	}
 	if len(row) == 0 {
 		return nil, fmt.Errorf("--data object is empty")
 	}
 	return row, nil
+}
+
+// decodeJSON keeps numbers as json.Number so integers above 2^53 reach the
+// API unchanged.
+func decodeJSON(raw []byte, v interface{}) error {
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.UseNumber()
+	if err := dec.Decode(v); err != nil {
+		return err
+	}
+	if dec.More() {
+		return fmt.Errorf("unexpected data after JSON value")
+	}
+	return nil
 }
 
 var stdin io.Reader = os.Stdin
