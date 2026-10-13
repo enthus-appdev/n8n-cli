@@ -15,6 +15,7 @@ func TestStopArgValidation(t *testing.T) {
 		{[]string{"42", "--workflow", "wf1"}, "either an execution ID or bulk filters"},
 		{[]string{"--workflow", "wf1"}, "pass an execution ID, or --status"},
 		{[]string{"--status", "error"}, `invalid --status "error"`},
+		{[]string{"--status", "running", "--started-after", "2026-10-13"}, `invalid --started-after "2026-10-13"`},
 	}
 	for _, tt := range tests {
 		cmd := newStopCmd()

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -39,6 +40,14 @@ window (RFC 3339 timestamps).`,
 			}
 			if len(args) == 0 && len(statuses) == 0 {
 				return fmt.Errorf("pass an execution ID, or --status for a bulk stop")
+			}
+			for flag, v := range map[string]string{"--started-after": startedAfter, "--started-before": startedBefore} {
+				if v == "" {
+					continue
+				}
+				if _, err := time.Parse(time.RFC3339, v); err != nil {
+					return fmt.Errorf("invalid %s %q (use RFC 3339, e.g. 2026-10-13T08:00:00Z)", flag, v)
+				}
 			}
 			for _, s := range statuses {
 				if !slices.Contains(stoppableStatuses, s) {

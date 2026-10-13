@@ -112,10 +112,16 @@ func TestParseRows(t *testing.T) {
 	if out, _ := json.Marshal(rows[0]); string(out) != `{"n":9007199254740993}` {
 		t.Errorf("big integer re-encoded as %s", out)
 	}
-	for _, bad := range []string{`[]`, `{}`, `null`, `"x"`, `[1]`, `{"a":1} {"b":2}`} {
+	for _, bad := range []string{`[]`, `{}`, `null`, `"x"`, `[1]`, `{"a":1} {"b":2}`, `{"a":1}]`, `{"a":1}}`, `[{"a":1}]]`} {
 		if _, err := parseRows([]byte(bad)); err == nil {
 			t.Errorf("parseRows(%s) succeeded, want error", bad)
 		}
+	}
+}
+
+func TestBuildFilterRejectsTrailingData(t *testing.T) {
+	if _, err := buildFilter(nil, `{"filters":[{"columnName":"a","condition":"eq","value":1}]}]`, false); err == nil {
+		t.Error("trailing ] accepted, want error")
 	}
 }
 

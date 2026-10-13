@@ -127,7 +127,7 @@ func decodeJSON(raw []byte, v interface{}) error {
 	if err := dec.Decode(v); err != nil {
 		return err
 	}
-	if dec.More() {
+	if _, err := dec.Token(); err != io.EOF {
 		return fmt.Errorf("unexpected data after JSON value")
 	}
 	return nil
