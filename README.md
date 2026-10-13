@@ -8,6 +8,7 @@ A command-line interface for managing [n8n](https://n8n.io) workflows. Perfect f
 - **Recursive Pull**: Download a workflow and all its sub-workflows with a single command
 - **Smart Push**: Push workflows in dependency order with automatic ID remapping
 - **Execution Control**: Run workflows, view execution history, and manage running executions
+- **Source Control**: Preview, push, and pull changes through the instance's Git connection
 - **Multi-Instance**: Configure and switch between multiple n8n instances
 - **LLM-Friendly**: JSON output for seamless AI integration
 
@@ -77,6 +78,41 @@ n8nctl execution retry <id>              # Retry a failed execution
 n8nctl execution delete <id>             # Delete execution
 ```
 
+### Source Control
+
+Drives n8n's built-in source control (Environments): the Git branch connected to the
+instance, not local files.
+
+```bash
+n8nctl source-control status                         # Pending changes a push would commit
+n8nctl source-control status --direction pull        # Changes a pull would import
+n8nctl source-control push -m "msg" --workflow <id>  # Commit and push one workflow
+n8nctl source-control push -m "msg" --workflow <id> --workflow <id2> --item credential:<id>
+n8nctl source-control push -m "msg" --workflow <id> --force   # Push despite conflicts
+n8nctl source-control pull                           # Import the connected branch
+n8nctl source-control pull --auto-publish published  # Republish workflows that were published
+n8nctl source-control pull --force                   # Discard conflicting local changes
+```
+
+`sc` is an alias for `source-control`. `--item <type>:<id>` accepts the types `credential`,
+`workflow`, `tags`, `variables`, `file`, `folders`, `project`, and `datatable`; take the IDs
+from `status`. Push has no push-everything option, so pending changes from other people on
+a shared instance are only committed when you name them.
+
+Things to know before using it:
+
+- A push commits to the connected branch. Every instance connected to the same branch
+  receives the change on its next pull.
+- A pull overwrites the drafts of every changed item with the Git version. `--auto-publish`
+  controls publishing after import: `none` (server default) keeps each workflow's published
+  state, `all` publishes everything imported, `published` republishes only workflows that
+  were published before the pull.
+- On a 409 the CLI lists the conflicting items and exits non-zero; rerun with `--force` only
+  after checking them. With `--json`, stdout carries `{"error": ..., "conflicts": [...]}`.
+- The API key needs the `sourceControl:read` (status), `sourceControl:push`, or
+  `sourceControl:pull` scope, and the instance needs source control connected. A missing
+  scope returns 403.
+
 ## Recursive Pull & Push
 
 The killer feature: pull a workflow and all its sub-workflows at once.
@@ -121,6 +157,7 @@ Use `--json` flag for structured output:
 n8nctl workflow list --json
 n8nctl workflow view abc123 --json
 n8nctl execution list --json
+n8nctl source-control status --json
 ```
 
 Typical workflow for LLM-assisted development:
