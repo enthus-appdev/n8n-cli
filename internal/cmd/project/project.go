@@ -16,10 +16,11 @@ func NewProjectCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "project",
 		Short: "Manage n8n projects",
-		Long:  `List and manage n8n projects.`,
+		Long:  `List n8n projects and manage their members.`,
 	}
 
 	cmd.AddCommand(newListCmd())
+	cmd.AddCommand(newMemberCmd())
 
 	return cmd
 }

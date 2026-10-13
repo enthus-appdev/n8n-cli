@@ -25,6 +25,7 @@ func NewExecutionCmd() *cobra.Command {
 	cmd.AddCommand(newViewCmd())
 	cmd.AddCommand(newRetryCmd())
 	cmd.AddCommand(newDeleteCmd())
+	cmd.AddCommand(newStopCmd())
 
 	return cmd
 }
