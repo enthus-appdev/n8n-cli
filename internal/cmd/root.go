@@ -8,10 +8,16 @@ import (
 
 	"github.com/spf13/cobra"
 
+	auditcmd "github.com/enthus-appdev/n8n-cli/internal/cmd/audit"
 	configcmd "github.com/enthus-appdev/n8n-cli/internal/cmd/config"
+	credentialcmd "github.com/enthus-appdev/n8n-cli/internal/cmd/credential"
+	datatablecmd "github.com/enthus-appdev/n8n-cli/internal/cmd/datatable"
 	executioncmd "github.com/enthus-appdev/n8n-cli/internal/cmd/execution"
+	foldercmd "github.com/enthus-appdev/n8n-cli/internal/cmd/folder"
 	projectcmd "github.com/enthus-appdev/n8n-cli/internal/cmd/project"
 	sourcecontrolcmd "github.com/enthus-appdev/n8n-cli/internal/cmd/sourcecontrol"
+	tagcmd "github.com/enthus-appdev/n8n-cli/internal/cmd/tag"
+	usercmd "github.com/enthus-appdev/n8n-cli/internal/cmd/user"
 	variablecmd "github.com/enthus-appdev/n8n-cli/internal/cmd/variable"
 	workflowcmd "github.com/enthus-appdev/n8n-cli/internal/cmd/workflow"
 )
@@ -46,6 +52,12 @@ func init() {
 	rootCmd.AddCommand(projectcmd.NewProjectCmd())
 	rootCmd.AddCommand(variablecmd.NewVariableCmd())
 	rootCmd.AddCommand(sourcecontrolcmd.NewSourceControlCmd())
+	rootCmd.AddCommand(credentialcmd.NewCredentialCmd())
+	rootCmd.AddCommand(tagcmd.NewTagCmd())
+	rootCmd.AddCommand(foldercmd.NewFolderCmd())
+	rootCmd.AddCommand(datatablecmd.NewDataTableCmd())
+	rootCmd.AddCommand(usercmd.NewUserCmd())
+	rootCmd.AddCommand(auditcmd.NewAuditCmd())
 	rootCmd.AddCommand(newVersionCmd())
 }
 

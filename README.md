@@ -7,8 +7,11 @@ A command-line interface for managing [n8n](https://n8n.io) workflows. Perfect f
 - **Workflow Management**: List, view, create, update, and delete workflows
 - **Recursive Pull**: Download a workflow and all its sub-workflows with a single command
 - **Smart Push**: Push workflows in dependency order with automatic ID remapping
-- **Execution Control**: Run workflows, view execution history, and manage running executions
+- **Execution Control**: Run workflows, view execution history, and stop running executions
 - **Source Control**: Preview, push, and pull changes through the instance's Git connection
+- **Versions & Publishing**: Inspect history, publish or roll back versions, archive and delete
+- **Data Tables**: Query, insert, update, upsert, and delete rows
+- **Admin**: Credentials, tags, folders, project members, users, and the security audit
 - **Multi-Instance**: Configure and switch between multiple n8n instances
 - **LLM-Friendly**: JSON output for seamless AI integration
 
@@ -69,6 +72,25 @@ n8nctl workflow activate <id>                 # Activate workflow
 n8nctl workflow deactivate <id>               # Deactivate workflow
 ```
 
+#### Versions, publishing, and deletion
+
+n8n keeps a draft and a published version of each workflow. `workflow view` shows
+both version IDs and whether the draft has unpublished changes.
+
+```bash
+n8nctl workflow history <id>                  # Saved versions, newest first
+n8nctl workflow version <id> <version-id>     # One saved version as JSON
+n8nctl workflow publish <id>                  # Publish the current draft
+n8nctl workflow publish <id> --version <vid>  # Publish (roll back to) a specific version
+n8nctl workflow unpublish <id>                # Stop running the workflow
+n8nctl workflow archive <id>                  # Soft delete (unpublishes it)
+n8nctl workflow unarchive <id>                # Restore an archived workflow
+n8nctl workflow delete <id>                   # Permanently delete (archive or unpublish first)
+```
+
+Pushing a draft to a published workflow with `workflow push` publishes the new version
+right away; it does not leave an unpublished draft.
+
 ### Executions
 
 ```bash
@@ -76,6 +98,9 @@ n8nctl execution list [--workflow <id>]  # List executions
 n8nctl execution view <id>               # View execution details
 n8nctl execution retry <id>              # Retry a failed execution
 n8nctl execution delete <id>             # Delete execution
+n8nctl execution stop <id>               # Stop a running or waiting execution
+n8nctl execution stop --status running,waiting [--workflow <id>]  # Bulk stop
+n8nctl execution stop --status queued --started-before 2026-10-13T08:00:00Z
 ```
 
 ### Source Control
@@ -112,6 +137,77 @@ Things to know before using it:
 - The API key needs the `sourceControl:read` (status), `sourceControl:push`, or
   `sourceControl:pull` scope, and the instance needs source control connected. A missing
   scope returns 403.
+
+### Data Tables
+
+```bash
+n8nctl datatable list                         # List data tables (alias: dt)
+n8nctl datatable view <table-id>              # Columns and size
+n8nctl dt rows <table-id> [--limit 100]       # Rows as a JSON array
+n8nctl dt rows <table-id> --where 'status=pending' --where 'count>=10'
+n8nctl dt rows <table-id> --where 'name~%invoice%' --where 'name~%rechnung%' --or
+n8nctl dt rows <table-id> --search foo --sort count:desc
+n8nctl dt insert <table-id> --data '{"name":"a","count":1}'      # Object or array of objects
+cat rows.json | n8nctl dt insert <table-id> --data -               # Read stdin
+n8nctl dt update <table-id> --where 'status=pending' --data '{"status":"done"}' --dry-run
+n8nctl dt upsert <table-id> --where 'key=x' --data '{"key":"x","value":"y"}'
+n8nctl dt delete-rows <table-id> --where 'status=obsolete' --dry-run
+```
+
+`--where <column><op><value>` supports `=`, `!=`, `>`, `>=`, `<`, `<=`, and `~`
+(case-insensitive LIKE, `%` as wildcard). Conditions are ANDed unless `--or` is set.
+Values are sent as strings and n8n converts them to the column type; for anything else,
+pass the API filter object with `--filter '{"type":"and","filters":[...]}'`. `update`,
+`upsert`, and `delete-rows` require a filter and accept `--dry-run`, which prints the
+rows before and after without writing. n8n's comparisons on date columns do not line up
+exactly with the stored UTC timestamps, so check a date filter with `rows` or `--dry-run`
+before writing with it.
+
+### Credentials and Tags
+
+```bash
+n8nctl credential list                        # ID, type, owning project (alias: cred)
+n8nctl credential test <id>                   # Exits non-zero when the test fails
+n8nctl credential schema <type>               # JSON schema of a credential type
+n8nctl credential delete <id>
+n8nctl tag list
+n8nctl tag create <name>
+n8nctl tag rename <tag-id> <new-name>
+n8nctl tag delete <tag-id>                    # Removes it from every workflow
+```
+
+### Projects, Folders, and Users
+
+```bash
+n8nctl project list
+n8nctl project member list <project-id>
+n8nctl project member add <project-id> <user-id>... --role project:editor
+n8nctl project member set-role <project-id> <user-id> project:viewer
+n8nctl project member remove <project-id> <user-id>
+n8nctl folder list --project <project-id>
+n8nctl folder view <folder-id> --project <project-id>
+n8nctl folder create <name> --project <project-id> [--parent <folder-id>]
+n8nctl folder update <folder-id> --project <project-id> [--name <name>] [--parent <folder-id>]
+n8nctl folder delete <folder-id> --project <project-id> [--transfer-to <folder-id>]
+n8nctl user list [--project <project-id>]     # Users with their global role
+n8nctl user view <user-id-or-email>
+```
+
+Deleting a folder without `--transfer-to` moves its workflows to the project root and
+archives them, and deletes its sub-folders.
+
+### Security Audit
+
+```bash
+n8nctl audit                                  # Full report as JSON
+n8nctl audit --categories credentials,nodes --days-abandoned 30
+```
+
+### API Key Scopes
+
+Each command needs the matching scope on the API key (for example `dataTableRow:read`
+for `dt rows`, `folder:list` for `folder list`). A missing scope returns
+`API error (403): Forbidden`.
 
 ## Recursive Pull & Push
 
@@ -158,6 +254,7 @@ n8nctl workflow list --json
 n8nctl workflow view abc123 --json
 n8nctl execution list --json
 n8nctl source-control status --json
+n8nctl datatable rows <table-id> --json   # Includes nextCursor
 ```
 
 Typical workflow for LLM-assisted development:

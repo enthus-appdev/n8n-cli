@@ -30,6 +30,13 @@ func NewWorkflowCmd() *cobra.Command {
 	cmd.AddCommand(newActivateCmd())
 	cmd.AddCommand(newDeactivateCmd())
 	cmd.AddCommand(newTransferCmd())
+	cmd.AddCommand(newPublishCmd())
+	cmd.AddCommand(newUnpublishCmd())
+	cmd.AddCommand(newArchiveCmd())
+	cmd.AddCommand(newUnarchiveCmd())
+	cmd.AddCommand(newDeleteCmd())
+	cmd.AddCommand(newHistoryCmd())
+	cmd.AddCommand(newVersionCmd())
 
 	return cmd
 }
@@ -134,14 +141,17 @@ func newViewCmd() *cobra.Command {
 				return err
 			}
 
-			wf, err := client.GetWorkflow(args[0])
+			wf, state, err := client.GetWorkflowWithState(args[0])
 			if err != nil {
 				return fmt.Errorf("failed to get workflow: %w", err)
 			}
 
 			jsonFlag, _ := cmd.Flags().GetBool("json")
 			if jsonFlag {
-				return printJSON(wf)
+				return printJSON(struct {
+					*api.Workflow
+					*api.WorkflowState
+				}{wf, state})
 			}
 
 			// Human-readable summary
@@ -151,6 +161,18 @@ func newViewCmd() *cobra.Command {
 				activeStr = "yes"
 			}
 			fmt.Printf("Active: %s\n", activeStr)
+			fmt.Printf("Draft version: %s\n", state.VersionID)
+			switch {
+			case state.ActiveVersionID == nil:
+				fmt.Println("Published version: none")
+			case state.HasUnpublishedChanges():
+				fmt.Printf("Published version: %s (draft has unpublished changes)\n", *state.ActiveVersionID)
+			default:
+				fmt.Printf("Published version: %s (matches draft)\n", *state.ActiveVersionID)
+			}
+			if state.IsArchived {
+				fmt.Println("Archived: yes")
+			}
 
 			// Show project info from shared field.
 			// n8n's API always returns exactly one owner entry per workflow.
