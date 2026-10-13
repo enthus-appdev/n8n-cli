@@ -251,20 +251,20 @@ func conflictError(action string, err error) error {
 }
 
 func printFiles(w io.Writer, files []api.SourceControlFile) {
-	fmt.Fprintf(w, "%-10s  %-10s  %-8s  %-18s  %s\n", "TYPE", "STATUS", "LOCATION", "ID", "NAME")
-	fmt.Fprintf(w, "%-10s  %-10s  %-8s  %-18s  %s\n", strings.Repeat("-", 10), strings.Repeat("-", 10), strings.Repeat("-", 8), strings.Repeat("-", 18), strings.Repeat("-", 30))
+	_, _ = fmt.Fprintf(w, "%-10s  %-10s  %-8s  %-18s  %s\n", "TYPE", "STATUS", "LOCATION", "ID", "NAME")
+	_, _ = fmt.Fprintf(w, "%-10s  %-10s  %-8s  %-18s  %s\n", strings.Repeat("-", 10), strings.Repeat("-", 10), strings.Repeat("-", 8), strings.Repeat("-", 18), strings.Repeat("-", 30))
 	for _, f := range files {
 		name := f.Name
 		if f.Conflict {
 			name += " [conflict]"
 		}
-		fmt.Fprintf(w, "%-10s  %-10s  %-8s  %-18s  %s\n", f.Type, f.Status, f.Location, f.ID, name)
+		_, _ = fmt.Fprintf(w, "%-10s  %-10s  %-8s  %-18s  %s\n", f.Type, f.Status, f.Location, f.ID, name)
 		if f.PublishingError != "" || f.PublishingErrorDetails != nil {
 			reason := ""
 			if f.PublishingErrorDetails != nil {
 				reason = " (" + f.PublishingErrorDetails.Reason + ")"
 			}
-			fmt.Fprintf(w, "            not published: %s%s\n", f.PublishingError, reason)
+			_, _ = fmt.Fprintf(w, "            not published: %s%s\n", f.PublishingError, reason)
 		}
 	}
 }
